@@ -7,4 +7,5 @@
                  [com.microsoft.windowsazure.storage/microsoft-windowsazure-storage-sdk "0.6.0"]
                  [org.clojure/tools.cli "0.3.1"]]
   :aot :all
-  :main azureblob.main)
+  :main azureblob.main
+  :uberjar-name "azureblob.jar")
