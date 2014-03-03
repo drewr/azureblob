@@ -18,4 +18,6 @@
 
 (defn -main [& args]
   (let [opts* (cli/parse-opts args opts)]
-    (prn (azure/upload (:options opts*) (:arguments opts*)))))
+    (->> (azure/upload (:options opts*) (:arguments opts*))
+         (map (fn [[k v]] (format "%s %s" (name k) v)))
+         (apply println))))

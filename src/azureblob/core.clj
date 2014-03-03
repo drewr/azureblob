@@ -24,9 +24,9 @@
 (defn files [path]
   (filter #(.isFile %1) (file-seq (io/file path))))
 
-(defn make-path [path file]
-  (let [relpath (string/replace-first (str file) #"^/+" "")]
-    (str (io/file path relpath))))
+(defn make-key [path file]
+  (let [relpath (string/replace-first (str file) #"^[/ ]+" "")]
+    (string/replace-first (str (io/file path relpath)) #"^/+" "")))
 
 (defmacro timed [& body]
   `(let [start# (System/currentTimeMillis)
@@ -41,10 +41,10 @@
 
 (defn upload-seq [files container blobpath]
   (for [file files]
-    (let [remote-path (make-path blobpath file)
+    (let [remote-path (make-key blobpath file)
           blob (.getBlockBlobReference container remote-path)]
       (merge {:file (str file)
-              :blob (str (.getName container) remote-path)}
+              :blob (str (.getName container) "/" remote-path)}
              (if-not (.exists blob)
                (let [len (.length file)
                      result (timed
@@ -57,14 +57,14 @@
   (let [f (fn [m report]
             (if (:error report)
               (do
-                (println (:blob report) "error")
+                (println "error" (:blob report))
                 (update-in m [:error] (fnil inc 0)))
               (do
-                (println (:blob report)
-                         (if (:took report)
-                           (format "%sKbps" (kbps
+                (println (if (:took report)
+                           (format "%.2fKbps" (kbps
                                              (:length report) (:took report)))
-                           "skip"))
+                           "skip")
+                         (:blob report))
                 (merge-with + m (dissoc report :file :blob)))))]
     (reduce f {} (upload-seq (files src) container blobpath))))
 
@@ -86,7 +86,8 @@
        (.uploadPermissions container perms)
        (let [fileref (io/file srcfile)]
          (if (.isDirectory fileref)
-           (sync-dir fileref container blobname)
+           (let [r (sync-dir fileref container blobname)]
+             (assoc r :kbps (kbps (:length r) (:took r))))
            (put-file fileref container blobname))))
      (throw (Exception. (format "%s not implemented" cmd)))))
 
